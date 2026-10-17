@@ -1,0 +1,87 @@
+# 毎日0時（日本時間）に今日の猫を取得して、サイトを公開し直す。
+# 写真はリポジトリには保存せず、公開するサイトにだけ入れる（履歴が重くならないように）。
+# 同じ日に何度動いても（ファイルを更新したときなど）、その日の猫は変わらない。
+
+name: 今日の猫を更新して公開
+
+on:
+  schedule:
+    - cron: '1 15 * * *' # UTC 15:01 = 日本時間 0:01
+  workflow_dispatch: # Actions の画面から手動でも動かせる
+  push:
+    branches: [main] # ファイルを更新したときも公開し直す
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 日本時間の日付を調べる
+        id: date
+        run: echo "today=$(TZ=Asia/Tokyo date +%F)" >> "$GITHUB_OUTPUT"
+
+      # その日すでに取得済みなら、同じ猫を使う
+      - name: 今日の猫を取り出す（取得済みなら）
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .daily-cats
+          key: daily-cats-${{ steps.date.outputs.today }}
+
+      - name: 今日の猫を取得する
+        id: fetch
+        if: steps.cache.outputs.cache-hit != 'true'
+        continue-on-error: true # 失敗しても、仮の猫でサイトは公開する
+        env:
+          CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
+        run: node scripts/fetch-daily-cats.mjs .daily-cats
+
+      - name: 今日の猫を保存する
+        if: steps.fetch.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: .daily-cats
+          key: daily-cats-${{ steps.date.outputs.today }}
+
+      - name: サイトを組み立てる
+        run: |
+          # 公開するのはゲームに必要なものだけ（新しいフォルダを足したらここにも追加する）
+          mkdir _site
+          cp -r index.html css js data images _site/
+          if [ -f .daily-cats/data/today.json ]; then
+            cp -r .daily-cats/. _site/
+            echo "今日の猫を入れました"
+          else
+            echo "::warning::今日の猫を取得できなかったので、仮の猫で公開します"
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 公開する
+        id: deployment
+        uses: actions/deploy-pages@v4
