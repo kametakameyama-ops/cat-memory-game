@@ -1,17 +1,17 @@
-// 今日の猫を The Cat API から20匹えらんで、写真と猫リストを書き出す。
+// 今日の猫を The Cat API から20匹えらんで、猫リストを書き出す。
+// 写真は保存しない（ゲームは The Cat API の画像サーバーから直接表示する）。
 // GitHub Actions から1日1回（日本時間0時）実行される。手元でも実行できる:
 //
 //   node scripts/fetch-daily-cats.mjs .daily-cats
 //
 // 出力（引数のフォルダの中）:
-//   data/today.json            今日の猫リスト
-//   images/today/<id>.<拡張子>  今日の写真（サイトと同じ場所から配信するのでシェア画像も作れる）
+//   data/today.json  今日の猫リスト
 //
 // 環境変数:
 //   CAT_API_KEY   The Cat API のAPIキー（なくても動く。あると1回の取得枚数が増える）
 //   CAT_API_BASE  APIの場所（テスト用。ふだんは指定しない）
 
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 // ---- 設定 ----
@@ -40,26 +40,17 @@ async function main() {
   console.log(`${date}（#${challengeNumber}）の猫を集めます`);
 
   const picked = await pickCats();
-  console.log(`${picked.length} 匹えらびました。写真を保存します`);
+  console.log(`${picked.length} 匹えらびました`);
 
-  const imageDir = path.join(outDir, 'images', 'today');
-  await rm(imageDir, { recursive: true, force: true });
-  await mkdir(imageDir, { recursive: true });
+  const cats = picked.map((image) => ({
+    id: image.id,
+    imageUrl: image.url,
+    width: image.width,
+    height: image.height,
+    ...(image.breeds?.[0]?.name ? { breed: image.breeds[0].name } : {}),
+  }));
+
   await mkdir(path.join(outDir, 'data'), { recursive: true });
-
-  const cats = [];
-  for (const image of picked) {
-    const fileName = `${image.id}${extensionOf(image.url)}`;
-    await download(image.url, path.join(imageDir, fileName));
-    cats.push({
-      id: image.id,
-      imageUrl: `./images/today/${fileName}`,
-      width: image.width,
-      height: image.height,
-      ...(image.breeds?.[0]?.name ? { breed: image.breeds[0].name } : {}),
-    });
-  }
-
   const daily = { version: 1, date, challengeNumber, source: 'thecatapi', cats };
   await writeFile(path.join(outDir, 'data', 'today.json'), `${JSON.stringify(daily, null, 2)}\n`);
   console.log(`書き出しました: ${path.join(outDir, 'data', 'today.json')}`);
@@ -107,22 +98,6 @@ async function getJson(url) {
   const response = await fetch(url, { headers: API_KEY ? { 'x-api-key': API_KEY } : {} });
   if (!response.ok) throw new Error(`APIの応答がエラーでした（${response.status}）: ${url}`);
   return response.json();
-}
-
-/**
- * @param {string} url
- * @param {string} filePath
- */
-async function download(url, filePath) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`写真を取得できませんでした（${response.status}）: ${url}`);
-  await writeFile(filePath, Buffer.from(await response.arrayBuffer()));
-}
-
-/** @param {string} url */
-function extensionOf(url) {
-  const ext = path.extname(new URL(url).pathname).toLowerCase();
-  return ext === '.jpeg' ? '.jpg' : ext;
 }
 
 /** 日本時間の今日を "YYYY-MM-DD" で */
