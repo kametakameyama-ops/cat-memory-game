@@ -1,0 +1,456 @@
+/* 1画面に収まるゲーム。上に細い情報バー、残りを盤面が使い切る。 */
+:root {
+  /* 色 */
+  --paper: #eef2ef;      /* 背景（うすい若草グレー） */
+  --surface: #ffffff;    /* パネル */
+  --ink: #2e2a3d;        /* 文字 */
+  --ink-soft: #6b6680;   /* 補足の文字 */
+  --pad: #e07a86;        /* 肉球ピンク（アクセント） */
+  --pad-ink: #ffffff;    /* 肉球ピンクの上の文字 */
+  --fur: #3d3856;        /* カード裏の色 */
+  --fur-dot: #4a4466;    /* カード裏の模様 */
+  --sage: #8fb3a5;       /* そろったカードの縁 */
+  --line: rgba(46, 42, 61, 0.12);
+  --scrim: rgba(30, 27, 40, 0.55);
+
+  /* 文字 */
+  --font-display: 'Mochiy Pop One', 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', sans-serif;
+  --font-body: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+
+  /* 大きさ */
+  --gutter-left: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-right: max(16px, env(safe-area-inset-right, 0px));
+  --radius: 14px;
+  --card-gap: 6px;
+  --card-size: 48px; /* JS が画面に合わせて書き換える */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1c1b23;
+    --surface: #2a2833;
+    --ink: #ece8f2;
+    --ink-soft: #aaa4bb;
+    --pad: #ee97a1;
+    --pad-ink: #2a1d22;
+    --fur: #4a4468;
+    --fur-dot: #574f7a;
+    --sage: #7fa597;
+    --line: rgba(236, 232, 242, 0.14);
+    --scrim: rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #1c1b23;
+  --surface: #2a2833;
+  --ink: #ece8f2;
+  --ink-soft: #aaa4bb;
+  --pad: #ee97a1;
+  --pad-ink: #2a1d22;
+  --fur: #4a4468;
+  --fur-dot: #574f7a;
+  --sage: #7fa597;
+  --line: rgba(236, 232, 242, 0.14);
+  --scrim: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+/* ---- 土台 ---- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ---- 上部バー ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px 6px;
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
+}
+.logo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1rem, 3.6vw, 1.35rem);
+  line-height: 1.2;
+}
+.topbar__date {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.status {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+.status__item { text-align: right; }
+.status dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+.status dd {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.status small { font-size: 0.8rem; color: var(--ink-soft); }
+.status__item--low dd { color: var(--pad); }
+
+/* ---- 盤面 ---- */
+.board-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding-block: 4px 12px;
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
+}
+.board-area__message {
+  position: absolute;
+  margin: 0;
+  color: var(--ink-soft);
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), var(--card-size));
+  grid-auto-rows: var(--card-size);
+  gap: var(--card-gap);
+}
+
+/* ---- カード ---- */
+.card {
+  position: relative;
+  width: var(--card-size);
+  height: var(--card-size);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  perspective: 600px;
+}
+.card:focus-visible { outline: 3px solid var(--pad); outline-offset: 2px; border-radius: 12px; }
+.card__inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.38s cubic-bezier(.3, .7, .3, 1);
+}
+.card[data-state="revealed"] .card__inner,
+.card[data-state="matched"] .card__inner { transform: rotateY(180deg); }
+
+.card__face {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--card-size) * 0.16);
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+/* 裏面: 肉球 */
+.card__back {
+  background-color: var(--fur);
+  background-image: radial-gradient(var(--fur-dot) 1.2px, transparent 1.6px);
+  background-size: 9px 9px;
+}
+.card__back::after {
+  content: "";
+  position: absolute;
+  inset: 26%;
+  background: var(--pad);
+  -webkit-mask: url("../images/paw.svg") center / contain no-repeat;
+  mask: url("../images/paw.svg") center / contain no-repeat;
+  opacity: 0.9;
+}
+/* 表面: 写真 */
+.card__front {
+  transform: rotateY(180deg);
+  background: var(--surface);
+}
+.card__front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.card[data-state="matched"] .card__front {
+  box-shadow: 0 0 0 2px var(--sage);
+}
+.card[data-state="matched"] { cursor: zoom-in; }
+.card[data-state="revealed"] { cursor: default; }
+
+/* そろった瞬間に少し跳ねる */
+.card.is-just-matched .card__inner { animation: hop 0.45s ease-out 0.3s; }
+@keyframes hop {
+  0% { transform: rotateY(180deg) scale(1); }
+  40% { transform: rotateY(180deg) scale(1.1); }
+  100% { transform: rotateY(180deg) scale(1); }
+}
+
+/* ---- ボタン ---- */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.button:hover { border-color: var(--ink-soft); }
+.button:focus-visible { outline: 3px solid var(--pad); outline-offset: 2px; }
+.button--primary {
+  background: var(--pad);
+  border-color: var(--pad);
+  color: var(--pad-ink);
+}
+.button--primary:hover { filter: brightness(1.05); border-color: var(--pad); }
+.button--small { min-height: 36px; padding: 0 14px; font-size: 0.9rem; }
+
+/* ---- 重なる画面（はじめ・おわり） ---- */
+.sheet {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
+  background: var(--scrim);
+  z-index: 10;
+}
+.sheet__panel {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 16px;
+  padding: 28px 24px 24px;
+  border-radius: 22px;
+  background: var(--surface);
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+.sheet__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.3rem;
+  line-height: 1.4;
+  text-wrap: balance;
+}
+.sheet__lead { margin: 0; line-height: 1.8; color: var(--ink-soft); }
+.sheet__note { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
+.sheet__actions { display: grid; gap: 10px; }
+
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.mode {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 14px 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.mode input { position: absolute; opacity: 0; pointer-events: none; }
+.mode__name { font-weight: 700; }
+.mode__time {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--ink-soft);
+}
+.mode:has(input:checked) {
+  border-color: var(--pad);
+  box-shadow: inset 0 0 0 1.5px var(--pad);
+}
+.mode:has(input:checked) .mode__time { color: var(--pad); }
+.mode:has(input:focus-visible) { outline: 3px solid var(--pad); outline-offset: 2px; }
+
+/* ---- アルバム ---- */
+.sheet--full {
+  place-items: stretch;
+  padding: 0;
+  background: var(--paper);
+  overflow-y: auto;
+}
+.album {
+  width: min(100%, 960px);
+  margin: 0 auto;
+  padding-block: max(20px, env(safe-area-inset-top, 0px)) max(28px, env(safe-area-inset-bottom, 0px));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
+}
+.album__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.album__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+}
+.album__lead { margin: 4px 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+.album__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.album__item button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  text-align: left;
+}
+.album__item button:focus-visible { outline: 3px solid var(--pad); outline-offset: 3px; border-radius: var(--radius); }
+.album__photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.album__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.album__badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--sage);
+  color: var(--surface);
+  font-weight: 700;
+}
+.album__item--missed .album__photo { opacity: 0.6; }
+.album__item--missed .album__badge { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
+
+/* ---- 拡大表示・シェア ---- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
+  background: var(--scrim);
+  z-index: 20;
+}
+.lightbox__panel {
+  width: min(100%, 520px);
+  max-height: 100%;
+  overflow-y: auto;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--surface);
+}
+.lightbox__image, .share__preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+  border-radius: 14px;
+  background: var(--paper);
+}
+.lightbox__caption { margin: 0; text-align: center; color: var(--ink-soft); font-size: 0.9rem; }
+.lightbox__caption:empty { display: none; }
+.lightbox__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.share__title {
+  margin: 4px 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.15rem;
+}
+.share__steps {
+  margin: 0;
+  padding-left: 1.4em;
+  line-height: 1.8;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+/* ---- 小さなお知らせ ---- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.9rem;
+  z-index: 30;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card__inner { transition: none; }
+  .card.is-just-matched .card__inner { animation: none; }
+}
