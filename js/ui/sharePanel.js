@@ -11,6 +11,7 @@ export class SharePanel {
     this.preview = /** @type {HTMLImageElement} */ (document.getElementById('share-preview'));
     this.steps = document.getElementById('share-steps');
     this.copyButton = document.getElementById('share-copy-button');
+    this.linkButton = document.getElementById('share-link-button');
     this.saveButton = document.getElementById('share-save-button');
     this.postLink = /** @type {HTMLAnchorElement} */ (document.getElementById('share-post-link'));
     /** @type {SharePayload | null} */
@@ -22,6 +23,7 @@ export class SharePanel {
       if (event.target === this.root) this.close();
     });
     this.copyButton.addEventListener('click', () => this.copyImage());
+    this.linkButton.addEventListener('click', () => this.copyLink());
     this.saveButton.addEventListener('click', () => this.saveImage());
   }
 
@@ -32,13 +34,15 @@ export class SharePanel {
     const blob = payload.imageBlob;
     const canCopy = Boolean(blob) && blob.type === 'image/png' && canWriteImageToClipboard();
 
-    this.preview.hidden = !blob;
-    this.copyButton.hidden = !canCopy;
-    this.saveButton.hidden = !blob;
+    // 見本: 添付できる画像があればそれを、なければ猫の写真を出す
     if (blob) {
       this.objectUrl = URL.createObjectURL(blob);
       this.preview.src = this.objectUrl;
+    } else {
+      this.preview.src = payload.previewUrl;
     }
+    this.copyButton.hidden = !canCopy;
+    this.saveButton.hidden = !blob;
     this.postLink.href = buildPostUrl(payload);
     this.steps.replaceChildren(...stepsFor(Boolean(blob), canCopy).map(toListItem));
     this.root.hidden = false;
@@ -58,6 +62,17 @@ export class SharePanel {
       showToast('画像をコピーしました');
     } catch {
       showToast('コピーできませんでした。「画像を保存」を使ってください');
+    }
+  }
+
+  async copyLink() {
+    if (!this.payload) return;
+    const text = `${this.payload.text}\n${this.payload.url}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('投稿文とリンクをコピーしました');
+    } catch {
+      showToast('コピーできませんでした');
     }
   }
 
@@ -89,7 +104,10 @@ function canWriteImageToClipboard() {
  */
 function stepsFor(hasImage, canCopy) {
   if (!hasImage) {
-    return ['「Xで投稿」を押すと、ゲームのリンク付きで投稿画面が開きます。'];
+    return [
+      '「Xで投稿」を押すと、この子のページのリンク付きで投稿画面が開きます',
+      '投稿すると、リンクのプレビューにこの子の写真が大きく表示されます',
+    ];
   }
   return [
     canCopy ? '「画像をコピー」か「画像を保存」を押す' : '「画像を保存」を押す',
