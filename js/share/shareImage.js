@@ -1,8 +1,12 @@
 // シェア用の画像を作る。
-// 3段構え:
+// 写真がサイトと同じ場所にあるとき（仮の猫など）だけ作れる。
+// The Cat API の画像サーバーはブラウザでの加工を許可していないので、その写真では null を返し、
+// 呼び出し側はリンク（シェア用ページ）だけでシェアする。
+//
+// 同じ場所の写真なら、次の順に試す:
 //   1. 猫の写真にタイトルと日付を重ねた「カード画像」を作る
-//   2. それが無理なら（画像サーバーが加工を許可していない等）、写真そのものを使う
-//   3. それも無理なら null を返す（呼び出し側はリンクだけのシェアにする）
+//   2. それが無理なら、写真そのものを使う
+//   3. それも無理なら null
 
 import { GAME_TITLE } from '../config.js';
 
@@ -39,6 +43,7 @@ const CARD = {
  * @returns {Promise<ShareImage | null>}
  */
 export async function createShareImage(cat, daily) {
+  if (!isSameOrigin(cat.imageUrl)) return null;
   try {
     return { blob: await drawCard(cat, daily), kind: 'card' };
   } catch (error) {
@@ -105,6 +110,14 @@ async function fetchPhoto(url) {
   const response = await fetch(url, { mode: 'cors' });
   if (!response.ok) throw new Error(`写真を取得できませんでした（${response.status}）`);
   return response.blob();
+}
+
+/**
+ * 写真がこのサイトと同じ場所にあるか。
+ * @param {string} url
+ */
+function isSameOrigin(url) {
+  return new URL(url, location.href).origin === location.origin;
 }
 
 // ---- 描画の小さな道具 ----
