@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#e8dff5"/>
+  <circle cx="330" cy="70" r="26" fill="#ffffff" opacity="0.5"/>
+  <circle cx="60" cy="350" r="40" fill="#ffffff" opacity="0.35"/>
+  <ellipse cx="200" cy="395" rx="150" ry="60" fill="#9aa3ad"/>
+  <path d="M110 170 L120 70 L190 130 Z" fill="#9aa3ad"/>
+  <path d="M290 170 L280 70 L210 130 Z" fill="#9aa3ad"/>
+  <path d="M125 150 L130 95 L172 132 Z" fill="#f6b5b8"/>
+  <path d="M275 150 L270 95 L228 132 Z" fill="#f6b5b8"/>
+  <clipPath id="head15"><ellipse cx="200" cy="235" rx="140" ry="125"/></clipPath>
+  <ellipse cx="200" cy="235" rx="140" ry="125" fill="#9aa3ad"/>
+  <g clip-path="url(#head15)">
+  </g>
+  <ellipse cx="200" cy="292" rx="52" ry="38" fill="#ffffff" opacity="0.28"/>
+  <g stroke="#2b2b2b" stroke-width="7" stroke-linecap="round" fill="none">
+    <path d="M140 235 Q158 215 176 235"/><path d="M224 235 Q242 215 260 235"/>
+  </g>
+  <path d="M188 272 H212 L200 286 Z" fill="#e98a93"/>
+  <path d="M200 286 Q190 302 176 296 M200 286 Q210 302 224 296" stroke="#2b2b2b" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <ellipse cx="128" cy="282" rx="18" ry="10" fill="#f6a5b0" opacity="0.45"/>
+  <ellipse cx="272" cy="282" rx="18" ry="10" fill="#f6a5b0" opacity="0.45"/>
+  <g stroke="#f4f1ea" stroke-width="3" stroke-linecap="round" opacity="0.8">
+    <path d="M150 280 L80 268"/><path d="M150 290 L78 296"/>
+    <path d="M250 280 L320 268"/><path d="M250 290 L322 296"/>
+  </g>
+</svg>
