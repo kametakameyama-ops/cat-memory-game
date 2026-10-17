@@ -28,7 +28,7 @@ python3 -m http.server 8000
 index.html              画面の骨組み
 css/style.css           見た目（色・大きさはファイル先頭の :root にまとめてある）
 data/
-  today.json            今日の猫リスト（毎日自動で書き換わる予定）
+  today.json            今日の猫リスト（手元確認用の仮データ。公開サイトでは毎日自動で差し替わる）
   fallback.json         today.json が読めないときの予備
 images/
   placeholder/          試作用の仮の猫画像
@@ -57,7 +57,10 @@ js/
     shareImage.js       シェア用画像を作る（3段構え）
     shareCat.js         シェアの流れ（共有メニュー or シェア画面）
 scripts/
+  fetch-daily-cats.mjs      今日の猫を The Cat API から取得する（毎日自動で実行）
   make_placeholder_cats.py  仮の猫画像と仮のリストを作る
+.github/workflows/
+  daily-cats.yml            毎日の取得と公開の自動実行
 ```
 
 ## データの形
@@ -104,9 +107,36 @@ scripts/
 
 スマホなど共有メニューが使えるブラウザでは画像ごと共有メニューへ。PCなどではシェア画面を開き、「画像をコピー／保存 → Xで投稿」の手順を出す。
 
+## 今日の猫の更新と公開（自動）
+
+`.github/workflows/daily-cats.yml` が次のタイミングで動き、サイトを公開し直す。
+
+- 毎日0時ごろ（日本時間）
+- main ブランチのファイルを更新したとき
+- Actions の画面から手動で「Run workflow」したとき
+
+流れ:
+
+1. `scripts/fetch-daily-cats.mjs` が The Cat API から条件に合う写真を20枚えらぶ（小さすぎる写真・細長すぎる写真は除く）
+2. 写真をダウンロードして `images/today/` に、猫リストを `data/today.json` に書き出す
+3. それをゲームのファイルと合わせて GitHub Pages に公開する
+
+- 写真はリポジトリには保存しない（公開するサイトにだけ入る）。リポジトリの `data/today.json` は手元確認用の仮データ
+- 写真をサイトと同じ場所から配信するので、シェア用のカード画像が作れる（The Cat API の画像サーバーはブラウザからの加工を許可していないため）
+- 同じ日に何度動いても、その日の猫は変わらない（その日の取得結果を Actions のキャッシュに保存して使い回す）
+- 取得に失敗した日は、仮の猫で公開される
+
+### The Cat API のAPIキー（任意）
+
+キーなしでも動くが、キーがあると1回の問い合わせで取れる枚数が増える。
+入れる場合は、リポジトリの Settings → Secrets and variables → Actions で `CAT_API_KEY` という名前で登録する。
+
+### 手元で取得を試す
+
+```sh
+node scripts/fetch-daily-cats.mjs .daily-cats
+```
+
 ## これから
 
-- [ ] The Cat API から毎日20匹を取得して `data/today.json` を更新するスクリプト
-- [ ] GitHub Actions で毎日0時（日本時間）に自動実行
-- [ ] GitHub Pages で公開、`og:image` を完全なURLに書き換え
 - [ ] Xアプリ内ブラウザでの動作確認
