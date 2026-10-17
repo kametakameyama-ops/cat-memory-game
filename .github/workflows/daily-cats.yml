@@ -1,5 +1,5 @@
-# 毎日0時（日本時間）に今日の猫を取得して、サイトを公開し直す。
-# 写真はリポジトリには保存せず、公開するサイトにだけ入れる（履歴が重くならないように）。
+# 毎日0時（日本時間）に今日の猫を選んで、サイトを公開し直す。
+# 写真は保存しない。猫リスト（写真のURL）だけを作り、ゲームは The Cat API の画像サーバーから直接表示する。
 # 同じ日に何度動いても（ファイルを更新したときなど）、その日の猫は変わらない。
 
 name: 今日の猫を更新して公開
@@ -30,19 +30,23 @@ jobs:
         with:
           node-version: 22
 
+      - name: 公開URLを調べる
+        id: pages
+        uses: actions/configure-pages@v5
+
       - name: 日本時間の日付を調べる
         id: date
         run: echo "today=$(TZ=Asia/Tokyo date +%F)" >> "$GITHUB_OUTPUT"
 
-      # その日すでに取得済みなら、同じ猫を使う
-      - name: 今日の猫を取り出す（取得済みなら）
+      # その日すでに選んであれば、同じ猫リストを使う（保存されるのは猫リストだけで、写真は含まない）
+      - name: 今日の猫リストを取り出す（選んであれば）
         id: cache
         uses: actions/cache/restore@v4
         with:
           path: .daily-cats
-          key: daily-cats-${{ steps.date.outputs.today }}
+          key: daily-cats-list-${{ steps.date.outputs.today }}
 
-      - name: 今日の猫を取得する
+      - name: 今日の猫を選ぶ
         id: fetch
         if: steps.cache.outputs.cache-hit != 'true'
         continue-on-error: true # 失敗しても、仮の猫でサイトは公開する
@@ -50,12 +54,12 @@ jobs:
           CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
         run: node scripts/fetch-daily-cats.mjs .daily-cats
 
-      - name: 今日の猫を保存する
+      - name: 今日の猫リストをとっておく
         if: steps.fetch.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: .daily-cats
-          key: daily-cats-${{ steps.date.outputs.today }}
+          key: daily-cats-list-${{ steps.date.outputs.today }}
 
       - name: サイトを組み立てる
         run: |
@@ -63,13 +67,12 @@ jobs:
           mkdir _site
           cp -r index.html css js data images _site/
           if [ -f .daily-cats/data/today.json ]; then
-            cp -r .daily-cats/. _site/
-            echo "今日の猫を入れました"
+            cp .daily-cats/data/today.json _site/data/today.json
+            echo "今日の猫リストを入れました"
           else
-            echo "::warning::今日の猫を取得できなかったので、仮の猫で公開します"
+            echo "::warning::今日の猫を選べなかったので、仮の猫で公開します"
           fi
-
-      - uses: actions/configure-pages@v5
+          node scripts/build-share-pages.mjs _site "${{ steps.pages.outputs.base_url }}"
 
       - uses: actions/upload-pages-artifact@v3
         with:
