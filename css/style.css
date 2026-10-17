@@ -308,6 +308,16 @@ button, input { font: inherit; color: inherit; }
 .mode:has(input:checked) .mode__time { color: var(--pad); }
 .mode:has(input:focus-visible) { outline: 3px solid var(--pad); outline-offset: 2px; }
 
+/* ---- 写真の出典 ---- */
+.credit {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+.credit a { color: inherit; }
+.credit a:focus-visible { outline: 2px solid var(--pad); outline-offset: 2px; }
+
 /* ---- アルバム ---- */
 .sheet--full {
   place-items: stretch;
@@ -380,6 +390,11 @@ button, input { font: inherit; color: inherit; }
   font-weight: 700;
 }
 .album__item--missed .album__photo { opacity: 0.6; }
+.album__footer {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
 .album__item--missed .album__badge { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
 
 /* ---- 拡大表示・シェア ---- */
